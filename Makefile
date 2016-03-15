@@ -2,6 +2,8 @@ default: prepare-build
 default: build/holo build/holo-files
 default: build/man/holorc.5 build/man/holo-plugin-interface.7 build/man/holo-test.7 build/man/holo.8 build/man/holo-files.8
 
+c-version: build/holo-c build/holo-c-check
+
 VERSION := $(shell ./util/find_version.sh)
 
 prepare-build:
@@ -10,6 +12,12 @@ build/holo: src/holo/main.go src/holo/*/*.go
 	go build --ldflags "-X main.version=$(VERSION)" -o $@ $<
 build/holo-files: src/holo-files/main.go src/holo-files/*/*.go
 	go build -o $@ $<
+
+CFLAGS += -std=gnu99 -g -Wall -Wextra -Werror -pedantic
+build/holo-c: $(filter-out src/holo-c/check.c,$(wildcard src/holo-c/*.c)) src/holo-c/*.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $(filter %.c,$^)
+build/holo-c-check: $(filter-out src/holo-c/main.c,$(wildcard src/holo-c/*.c)) src/holo-c/*.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -lcheck -o $@ $(filter %.c,$^)
 
 # manpages are generated using pod2man (which comes with Perl and therefore
 # should be readily available on almost every Unix system)
