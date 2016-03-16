@@ -20,12 +20,22 @@
 
 #include "holo.h"
 
+#include <sysexits.h>
 #include <stdio.h>  //(f)printf
 
 int main() {
+    int exitStatus = 0;
+
     struct Config cfg;
     if (!configInit(&cfg)) {
+        exitStatus = EX_CONFIG;
         goto ERR_CONFIG_INIT;
+    }
+
+    struct LockFile lock;
+    if (!lockFileAcquire(&lock, &cfg)) {
+        exitStatus = EX_UNAVAILABLE;
+        goto ERR_LOCK_ACQUIRE;
     }
 
     //iterate over plugins
@@ -36,8 +46,10 @@ int main() {
         plugin = plugin->next;
     }
 
+ERR_LOCK_ACQUIRE:
+    lockFileRelease(&lock);
 ERR_CONFIG_INIT:
     configCleanup(&cfg);
 
-    return 0;
+    return exitStatus;
 }

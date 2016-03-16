@@ -42,6 +42,22 @@ bool configInit(struct Config* config);
 void configCleanup(struct Config* config);
 
 ////////////////////////////////////////////////////////////////////////////////
+// lockfile.c
+
+///LockFile represents the /run/holo.pid file.
+struct LockFile {
+    char* path;
+    int   fd;
+};
+
+///Initialize an allocated LockFile instance by creating the lock file. Returns
+///whether the lock was obtained successfully.
+bool lockFileAcquire(struct LockFile* lock, struct Config* cfg);
+
+///Release the lockfile.
+void lockFileRelease(struct LockFile* lock);
+
+////////////////////////////////////////////////////////////////////////////////
 // plugin.c
 
 ///Configuration for a plugin that can be run.
