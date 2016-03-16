@@ -22,17 +22,26 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct Plugin* pluginNew(struct Config* config, const char* identifier) {
-    //TODO: support identifier with explicit executable path
-
+struct Plugin* pluginNew(struct Config* config, const char* identifierLine) {
     struct Plugin* plugin = malloc(sizeof(struct Plugin));
-    plugin->identifier = strdup(identifier);
-
-    char* relExecutablePath = stringJoin("usr/lib/holo/holo-", identifier);
-    plugin->executablePath  = pathJoin(config->rootDir, relExecutablePath);
-    free(relExecutablePath);
-
     plugin->next = NULL;
+
+    //check if the identifierLine contains an explicit executable path,
+    //e.g. identifierLine = "files=./build/holo-files"
+    const char* eqPos = strchr(identifierLine, '=');
+    if (eqPos == NULL) {
+        //`identifierLine` contains only the identifier
+        plugin->identifier = strdup(identifierLine);
+
+        //infer the executable path from the identifier
+        char* relExecutablePath = stringJoin("usr/lib/holo/holo-", identifierLine);
+        plugin->executablePath  = pathJoin(config->rootDir, relExecutablePath);
+        free(relExecutablePath);
+    } else {
+        //`identifierLine` contains both identifier and executable path
+        plugin->identifier     = strndup(identifierLine, eqPos - identifierLine);
+        plugin->executablePath = strdup(eqPos + 1);
+    }
 
     return plugin;
 }
