@@ -26,22 +26,59 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
+#include <unistd.h>
 
 //Return a cleaned version of this path, without trailing or duplicate slashes.
 
 static const char*  pluginCmd    = "plugin";
 static const size_t pluginCmdLen = 6; // == strlen(pluginCmd)
 
-bool configInit(struct Config* cfg) {
-    bool success = true; //unless set to false
-
+//Step 1 of configInit(): Find root directory and setup fixed subdirectories.
+static bool configInit_PrepareRootDir(struct Config* cfg) {
     //get the root directory
     char* const rootDir = getenv("HOLO_ROOT_DIR");
     if (rootDir == NULL || *rootDir == 0) {
-        cfg->rootDir = strdup("/");
+        cfg->rootDir  = strdup("/");
+        cfg->cacheDir = strdup("/tmp/holo-cache");
     } else {
-        cfg->rootDir = pathClean(rootDir);
+        cfg->rootDir  = pathClean(rootDir);
+        cfg->cacheDir = pathJoin(cfg->rootDir, "tmp/holo-cache");
     }
+
+    //if the cache directory exists from a previous run, remove it recursively
+    if (unlink(cfg->cacheDir) != 0) {
+        switch (errno) {
+        case EISDIR:;
+            //is a directory -> remove recursively
+            char* error = unlinkTree(cfg->cacheDir);
+            if (error != NULL) {
+                fprintf(stderr, "Cannot remove %s: %s\n", cfg->cacheDir, error);
+                free(error);
+                return false;
+            }
+            break;
+        case ENOENT:
+            //does not exist -> nothing to do
+            break;
+        default:
+            //unexpected error
+            fprintf(stderr, "Cannot remove %s: %s\n", cfg->cacheDir, strerror(errno));
+            break;
+        }
+    }
+
+    //initialize the cache directory
+    if (mkdirIncludingParents(cfg->cacheDir, 0755) != 0) {
+        fprintf(stderr, "Cannot create %s: %s\n", cfg->cacheDir, strerror(errno));
+        return false;
+    }
+    return true;
+}
+
+//Step 2 of configInit(): Read /etc/holorc and validate plugin setup.
+//Requires that step 1 (configInit_PrepareRootDir) is already done.
+static bool configInit_ReadConfig(struct Config* cfg) {
+    bool success = true; //unless set to false
 
     //start with empty plugin list
     cfg->firstPlugin = NULL;
@@ -114,10 +151,27 @@ ERR_FOPEN:
     return success;
 }
 
+bool configInit(struct Config* cfg) {
+    //zero-initialize all members to make sure that a partially-constructed
+    //Config does not make the program crash during cleanup
+    memset(cfg, 0, sizeof(struct Config));
+
+    return configInit_PrepareRootDir(cfg) && configInit_ReadConfig(cfg);
+}
+
 void configCleanup(struct Config* cfg) {
+    //cleanup runtime cache
+    char* error = unlinkTree(cfg->cacheDir);
+    if (error != NULL) {
+        fprintf(stderr, "Cannot remove %s: %s\n", cfg->cacheDir, error);
+        free(error);
+        //...but keep going
+    }
+
     //casts eliminating const are okay in this function since it is explicitly
     //used to clean up fields of `cfg` that are usually const for safety
     free((char*) cfg->rootDir);
+    free((char*) cfg->cacheDir);
 
     pluginFree(cfg->firstPlugin);
 }
