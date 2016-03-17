@@ -24,24 +24,28 @@
 #include <stdbool.h>
 #include <stddef.h> //size_t
 #include <sys/types.h>
+#include <list>
+#include <string>
+
+//forward declarations
+class Plugin;
 
 ////////////////////////////////////////////////////////////////////////////////
 // config.c
 
 ///The environment and plugin selection for the current run.
 struct Config {
-    const char*    rootDir;     ///< path to root directory (usually "/", but can differ in test runs)
-    const char*    cacheDir;    ///< path to cache directory (usually "/tmp/holo-cache")
-    struct Plugin* firstPlugin; ///< linked list of plugins (in execution order)
+    ///Construct a Config instance for the current program run. Failures
+    ///will be reported on stderr and will result in isValid() returning
+    ///false on the resulting instance.
+    Config();
+    ~Config();
+
+    bool isValid;               ///< whether the constructor finished without errors
+    std::string rootDirectory;  ///< path to root directory (usually "/", but can differ in test runs).
+    std::string cacheDirectory; ///< path to cache directory (usually "/tmp/holo-cache").
+    std::list<Plugin*> plugins; ///< list of plugins, in execution order.
 };
-
-///Initialize a Config instance for the current program run. Failures are
-///reported on stderr and will result in a false return value. In this case,
-///the Config instance should not be used further.
-bool configInit(struct Config* config);
-
-///Cleanup the contents of this Config instance.
-void configCleanup(struct Config* config);
 
 ////////////////////////////////////////////////////////////////////////////////
 // lockfile.c
@@ -54,7 +58,7 @@ struct LockFile {
 
 ///Initialize an allocated LockFile instance by creating the lock file. Returns
 ///whether the lock was obtained successfully.
-bool lockFileAcquire(struct LockFile* lock, struct Config* cfg);
+bool lockFileAcquire(struct LockFile* lock, const Config& cfg);
 
 ///Release the lockfile.
 void lockFileRelease(struct LockFile* lock);
@@ -63,17 +67,17 @@ void lockFileRelease(struct LockFile* lock);
 // plugin.c
 
 ///Configuration for a plugin that can be run.
-struct Plugin {
-    const char*    identifier;
-    const char*    executablePath;
-    struct Plugin* next; ///< used for the linked-list structure of Config.plugins
+class Plugin {
+    public:
+        Plugin(const std::string& identifierLine, const Config& config);
+        ~Plugin() {}
+
+        const std::string& identifier()     const { return m_identifier; }
+        const std::string& executablePath() const { return m_executablePath; }
+    private:
+        std::string m_identifier;
+        std::string m_executablePath;
 };
-
-///Initialize a Plugin instance for the given plugin identifier.
-struct Plugin* pluginNew(struct Config* config, const char* identifier);
-
-///Destroy a Plugin instance (and its nextPlugin recursively).
-void pluginFree(struct Plugin* plugin);
 
 ////////////////////////////////////////////////////////////////////////////////
 // util.c

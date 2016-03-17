@@ -28,32 +28,30 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-//Return a cleaned version of this path, without trailing or duplicate slashes.
-
 static const char*  pluginCmd    = "plugin";
 static const size_t pluginCmdLen = 6; // == strlen(pluginCmd)
 
-//Step 1 of configInit(): Find root directory and setup fixed subdirectories.
-static bool configInit_PrepareRootDir(struct Config* cfg) {
+//Step 1 of Config::Config(): Find root directory and setup fixed subdirectories.
+static bool prepareRootDir(Config& cfg) {
     //get the root directory
-    char* const rootDir = getenv("HOLO_ROOT_DIR");
-    if (rootDir == NULL || *rootDir == 0) {
-        cfg->rootDir  = strdup("/");
-        cfg->cacheDir = strdup("/tmp/holo-cache");
+    cfg.rootDirectory = getenv("HOLO_ROOT_DIR");
+    if (cfg.rootDirectory.empty()) {
+        cfg.rootDirectory  = "/";
+        cfg.cacheDirectory = "/tmp/holo-cache";
     } else {
-        cfg->rootDir  = pathClean(rootDir);
-        cfg->cacheDir = pathJoin(cfg->rootDir, "tmp/holo-cache");
+        cfg.rootDirectory  = pathClean(cfg.rootDirectory.c_str());
+        cfg.cacheDirectory = pathJoin(cfg.rootDirectory.c_str(), "tmp/holo-cache");
     }
 
     //if the cache directory exists from a previous run, remove it recursively
     char* error;
-    if (unlink(cfg->cacheDir) != 0) {
+    if (unlink(cfg.cacheDirectory.c_str()) != 0) {
         switch (errno) {
         case EISDIR:
             //is a directory -> remove recursively
-            error = unlinkTree(cfg->cacheDir);
+            error = unlinkTree(cfg.cacheDirectory.c_str());
             if (error != NULL) {
-                fprintf(stderr, "Cannot remove %s: %s\n", cfg->cacheDir, error);
+                fprintf(stderr, "Cannot remove %s: %s\n", cfg.cacheDirectory.c_str(), error);
                 free(error);
                 return false;
             }
@@ -63,31 +61,27 @@ static bool configInit_PrepareRootDir(struct Config* cfg) {
             break;
         default:
             //unexpected error
-            fprintf(stderr, "Cannot remove %s: %s\n", cfg->cacheDir, strerror(errno));
+            fprintf(stderr, "Cannot remove %s: %s\n", cfg.cacheDirectory.c_str(), strerror(errno));
             break;
         }
     }
 
     //initialize the cache directory
-    if (mkdirIncludingParents(cfg->cacheDir, 0755) != 0) {
-        fprintf(stderr, "Cannot create %s: %s\n", cfg->cacheDir, strerror(errno));
+    if (mkdirIncludingParents(cfg.cacheDirectory.c_str(), 0755) != 0) {
+        fprintf(stderr, "Cannot create %s: %s\n", cfg.cacheDirectory.c_str(), strerror(errno));
         return false;
     }
     return true;
 }
 
-//Step 2 of configInit(): Read /etc/holorc and validate plugin setup.
-//Requires that step 1 (configInit_PrepareRootDir) is already done.
-static bool configInit_ReadConfig(struct Config* cfg) {
+//Step 2 of Config::Config(): Read /etc/holorc and validate plugin setup.
+//Requires that step 1 (prepareRootDir) is already done.
+static bool readConfig(Config& cfg) {
     bool success = true; //unless set to false
     size_t bufferLength; char* buffer; //declared in advance to avoid goto crossing initialization
 
-    //start with empty plugin list
-    cfg->firstPlugin = NULL;
-    struct Plugin* lastPlugin = NULL;
-
     //open $root/etc/holorc
-    char* const rcPath = pathJoin(cfg->rootDir, "etc/holorc");
+    char* const rcPath = pathJoin(cfg.rootDirectory.c_str(), "etc/holorc");
     FILE* file = fopen(rcPath, "r");
     if (file == NULL) {
         fprintf(stderr, "open %s: %s\n", rcPath, strerror(errno));
@@ -131,14 +125,7 @@ static bool configInit_ReadConfig(struct Config* cfg) {
             }
 
             //`line` now contains the plugin identifier
-            struct Plugin* p = pluginNew(cfg, line);
-            //append plugin to list
-            if (lastPlugin) {
-                lastPlugin->next = p;
-            } else {
-                cfg->firstPlugin = p;
-            }
-            lastPlugin = p;
+            cfg.plugins.push_back(new Plugin(line, cfg));
         } else {
             fprintf(stderr, "read %s: unrecognized line: %s\n", rcPath, line);
             success = false; //...but keep going to report all broken lines
@@ -153,27 +140,18 @@ ERR_FOPEN:
     return success;
 }
 
-bool configInit(struct Config* cfg) {
-    //zero-initialize all members to make sure that a partially-constructed
-    //Config does not make the program crash during cleanup
-    memset(cfg, 0, sizeof(struct Config));
-
-    return configInit_PrepareRootDir(cfg) && configInit_ReadConfig(cfg);
+Config::Config() {
+    isValid = prepareRootDir(*this) && readConfig(*this);
 }
 
-void configCleanup(struct Config* cfg) {
+Config::~Config() {
     //cleanup runtime cache
-    char* error = unlinkTree(cfg->cacheDir);
+    char* error = unlinkTree(cacheDirectory.c_str());
     if (error != NULL) {
-        fprintf(stderr, "Cannot remove %s: %s\n", cfg->cacheDir, error);
+        fprintf(stderr, "Cannot remove %s: %s\n", cacheDirectory.c_str(), error);
         free(error);
         //...but keep going
     }
 
-    //casts eliminating const are okay in this function since it is explicitly
-    //used to clean up fields of `cfg` that are usually const for safety
-    free((char*) cfg->rootDir);
-    free((char*) cfg->cacheDir);
-
-    pluginFree(cfg->firstPlugin);
+    plugins.clear();
 }

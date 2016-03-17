@@ -25,32 +25,26 @@
 
 int main() {
     int exitStatus = 0;
-    struct Plugin* plugin; //declared in advance to avoid goto crossing initialization
 
-    struct Config cfg;
-    if (!configInit(&cfg)) {
-        exitStatus = EX_CONFIG;
-        goto ERR_CONFIG_INIT;
+    Config cfg;
+    if (!cfg.isValid) {
+        return EX_CONFIG;
     }
 
     struct LockFile lock;
-    if (!lockFileAcquire(&lock, &cfg)) {
+    if (!lockFileAcquire(&lock, cfg)) {
         exitStatus = EX_UNAVAILABLE;
         goto ERR_LOCK_ACQUIRE;
     }
 
     //iterate over plugins
-    printf("DEBUG: root dir = %s\n", cfg.rootDir);
-    plugin = cfg.firstPlugin;
-    while (plugin) {
-        printf("DEBUG: found plugin %s at %s\n", plugin->identifier, plugin->executablePath);
-        plugin = plugin->next;
+    printf("DEBUG: root dir = %s\n", cfg.rootDirectory.c_str());
+    for (Plugin* plugin: cfg.plugins) {
+        printf("DEBUG: found plugin %s at %s\n", plugin->identifier().c_str(), plugin->executablePath().c_str());
     }
 
 ERR_LOCK_ACQUIRE:
     lockFileRelease(&lock);
-ERR_CONFIG_INIT:
-    configCleanup(&cfg);
 
     return exitStatus;
 }

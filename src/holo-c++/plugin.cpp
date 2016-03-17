@@ -22,37 +22,20 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct Plugin* pluginNew(struct Config* config, const char* identifierLine) {
-    struct Plugin* plugin = (struct Plugin*) malloc(sizeof(struct Plugin));
-    plugin->next = NULL;
-
+Plugin::Plugin(const std::string& identifierLine, const Config& config) {
     //check if the identifierLine contains an explicit executable path,
     //e.g. identifierLine = "files=./build/holo-files"
-    const char* eqPos = strchr(identifierLine, '=');
-    if (eqPos == NULL) {
+    const auto eqIdx = identifierLine.find('=');
+    if (eqIdx == std::string::npos) {
         //`identifierLine` contains only the identifier
-        plugin->identifier = strdup(identifierLine);
+        m_identifier = identifierLine;
 
         //infer the executable path from the identifier
-        char* relExecutablePath = stringJoin("usr/lib/holo/holo-", identifierLine);
-        plugin->executablePath  = pathJoin(config->rootDir, relExecutablePath);
-        free(relExecutablePath);
+        const std::string relExecutablePath = "usr/lib/holo/holo-" + identifierLine;
+        m_executablePath = pathJoin(config.rootDirectory.c_str(), relExecutablePath.c_str());
     } else {
         //`identifierLine` contains both identifier and executable path
-        plugin->identifier     = strndup(identifierLine, eqPos - identifierLine);
-        plugin->executablePath = strdup(eqPos + 1);
-    }
-
-    return plugin;
-}
-
-void pluginFree(struct Plugin* plugin) {
-    //casts eliminating const are okay in this function since it is explicitly
-    //used to clean up fields of `plugin` that are usually const for safety
-    if (plugin) {
-        free((char*) plugin->identifier);
-        free((char*) plugin->executablePath);
-        pluginFree(plugin->next);
-        free(plugin);
+        m_identifier     = identifierLine.substr(0, eqIdx);
+        m_executablePath = identifierLine.substr(eqIdx + 1);
     }
 }

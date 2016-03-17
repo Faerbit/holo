@@ -26,12 +26,12 @@
 #include <string.h>
 #include <unistd.h>
 
-bool lockFileAcquire(struct LockFile* lock, struct Config* cfg) {
+bool lockFileAcquire(struct LockFile* lock, const Config& cfg) {
     //where to store the lock file?
-    if (strcmp(cfg->rootDir, "/") == 0) {
+    if (cfg.rootDirectory == "/") {
         lock->path = strdup("/run/holo.pid");
     } else {
-        lock->path = pathJoin(cfg->rootDir, "holo.pid");
+        lock->path = pathJoin(cfg.rootDirectory.c_str(), "holo.pid");
     }
 
     //acquire lock

@@ -22,9 +22,9 @@ build/holo-c-check: $(filter-out src/holo-c/main.c,$(wildcard src/holo-c/*.c)) s
 
 CXXFLAGS += -std=c++14 -O2 -g -Wall -Wextra -Werror -pedantic
 build/holo-c++: $(filter-out src/holo-c++/check.cpp,$(wildcard src/holo-c++/*.cpp)) src/holo-c++/*.h
-	$(CC) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $(filter %.cpp,$^)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $(filter %.cpp,$^)
 build/holo-c++-check: $(filter-out src/holo-c++/main.cpp,$(wildcard src/holo-c++/*.cpp)) src/holo-c++/*.h
-	$(CC) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -lcheck -o $@ $(filter %.cpp,$^)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -lcheck -o $@ $(filter %.cpp,$^)
 
 # manpages are generated using pod2man (which comes with Perl and therefore
 # should be readily available on almost every Unix system)
