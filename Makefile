@@ -3,6 +3,7 @@ default: build/holo build/holo-files
 default: build/man/holorc.5 build/man/holo-plugin-interface.7 build/man/holo-test.7 build/man/holo.8 build/man/holo-files.8
 
 c-version: build/holo-c build/holo-c-check
+c++-version: build/holo-c++ build/holo-c++-check
 
 VERSION := $(shell ./util/find_version.sh)
 
@@ -18,6 +19,12 @@ build/holo-c: $(filter-out src/holo-c/check.c,$(wildcard src/holo-c/*.c)) src/ho
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $(filter %.c,$^)
 build/holo-c-check: $(filter-out src/holo-c/main.c,$(wildcard src/holo-c/*.c)) src/holo-c/*.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -lcheck -o $@ $(filter %.c,$^)
+
+CXXFLAGS += -std=c++14 -O2 -g -Wall -Wextra -Werror -pedantic
+build/holo-c++: $(filter-out src/holo-c++/check.cpp,$(wildcard src/holo-c++/*.cpp)) src/holo-c++/*.h
+	$(CC) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $(filter %.cpp,$^)
+build/holo-c++-check: $(filter-out src/holo-c++/main.cpp,$(wildcard src/holo-c++/*.cpp)) src/holo-c++/*.h
+	$(CC) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -lcheck -o $@ $(filter %.cpp,$^)
 
 # manpages are generated using pod2man (which comes with Perl and therefore
 # should be readily available on almost every Unix system)
