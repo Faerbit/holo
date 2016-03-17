@@ -34,7 +34,8 @@ static const size_t pluginCmdLen = 6; // == strlen(pluginCmd)
 //Step 1 of Config::Config(): Find root directory and setup fixed subdirectories.
 static bool prepareRootDir(Config& cfg) {
     //get the root directory
-    cfg.rootDirectory = getenv("HOLO_ROOT_DIR");
+    const char* rootDir = getenv("HOLO_ROOT_DIR");
+    cfg.rootDirectory = rootDir == NULL ? std::string() : rootDir;
     if (cfg.rootDirectory.empty()) {
         cfg.rootDirectory  = "/";
         cfg.cacheDirectory = "/tmp/holo-cache";
