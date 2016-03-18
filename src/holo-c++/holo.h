@@ -31,6 +31,47 @@
 class Plugin;
 
 ////////////////////////////////////////////////////////////////////////////////
+// path.cpp
+
+///Represents a file-system path. Paths held by instances of this class are
+///always "clean", i.e. any trailing or duplicate slashes have been removed.
+class Path {
+    public:
+        ///Construct a new instance with an empty path string.
+        Path() : m_path() {}
+        ///Construct a new instance by cleaning the given `path` string.
+        Path(const std::string& path);
+        ///@overload
+        Path(const char* path) : Path(path ? std::string(path) : std::string()) {}
+
+        ///Copy `rhs` efficiently.
+        Path(const Path& rhs) : m_path(rhs.m_path) {}
+        ///Move `rhs` efficiently.
+        Path(Path&& rhs) : m_path(std::move(rhs.m_path)) {}
+
+        ///Copy `rhs` efficiently.
+        Path& operator=(const Path& rhs) { m_path = rhs.m_path; return *this; }
+        ///Move `rhs` efficiently.
+        Path& operator=(Path&& rhs) { m_path = std::move(rhs.m_path); return *this; }
+
+        ///Concatenate paths.
+        Path operator+(const Path& rhs) const;
+
+        ///Return the path in this instance.
+        operator std::string const() { return m_path; }
+        ///Return the path in this instance.
+        const std::string& str() const { return m_path; }
+        ///Return the path in this instance. Semantics are identical to std::string::c_str().
+        const char* c_str() const { return m_path.c_str(); }
+    private:
+        struct WithoutCleaning{};
+        ///Private constructor that bypasses the cleaning of the default ctor.
+        Path(const std::string& cleanPath, const WithoutCleaning&) : m_path(cleanPath) {}
+
+        std::string m_path;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 // config.c
 
 ///The environment and plugin selection for the current run.
@@ -42,8 +83,8 @@ struct Config {
     ~Config();
 
     bool isValid;               ///< whether the constructor finished without errors
-    std::string rootDirectory;  ///< path to root directory (usually "/", but can differ in test runs).
-    std::string cacheDirectory; ///< path to cache directory (usually "/tmp/holo-cache").
+    Path rootDirectory;         ///< usually "/", but can differ in test runs
+    Path cacheDirectory;        ///< usually "/tmp/holo-cache"
     std::list<Plugin*> plugins; ///< list of plugins, in execution order.
 };
 
@@ -52,8 +93,8 @@ struct Config {
 
 ///LockFile represents the /run/holo.pid file.
 struct LockFile {
-    char* path;
-    int   fd;
+    Path path;
+    int  fd;
 };
 
 ///Initialize an allocated LockFile instance by creating the lock file. Returns
@@ -72,24 +113,19 @@ class Plugin {
         Plugin(const std::string& identifierLine, const Config& config);
         ~Plugin() {}
 
-        const std::string& identifier()     const { return m_identifier; }
-        const std::string& executablePath() const { return m_executablePath; }
+        const std::string& identifier() const { return m_identifier; }
+        const Path& executablePath()    const { return m_executablePath; }
     private:
         std::string m_identifier;
-        std::string m_executablePath;
+        Path m_executablePath;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 // util.c
 
-///Return a cleaned version of this path, without trailing or duplicate slashes.
+///\deprecated
 char* pathClean(const char* path);
-
-///Return a join of both paths. Both arguments must be clean, as
-///defined by pathClean().
-///@code
-///x = pathJoin("a/b", "c/d");    // x = "a/b/c/d"
-///@endcode
+///\deprecated
 char* pathJoin(const char* path1, const char* path2);
 
 ///Join two strings. NULL strings are interpreted as empty strings.

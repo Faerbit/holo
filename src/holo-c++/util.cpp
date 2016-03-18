@@ -32,65 +32,11 @@
 #include <unistd.h>
 
 char* pathClean(const char* path) {
-    const size_t len = strlen(path);
-    char* p = (char*) malloc(1 + len);
-
-    //step 1: copy and remove duplicate slashes while doing so
-    //  e.g. "//foo/bar///" -> "/foo/bar/"
-    const char* r = path;  //read pointer
-    char* w = p;           //write pointer
-    bool sawSlash = false; //state machine :)
-    while (*r) {
-        const bool isSlash = (*r == '/');
-        if (sawSlash && isSlash) {
-            //duplicate slash at *r -> don't copy
-            r++;
-        } else {
-            //acceptable character at *r -> copy
-            sawSlash = isSlash;
-            *w++ = *r++;
-        }
-    }
-    *w = 0;
-
-    //step 2: remove trailing slashes, except for p[0] if strcmp(p, "/") == 0
-    while (w > p+1 && *--w == '/') {
-        *w = 0;
-    }
-
-    //NOTE: We may be wasting a few bytes because p is allocated at the same
-    //size as path, but whatever.
-    return p;
+    return strdup(Path(path).str().c_str());
 }
 
 char* pathJoin(const char* path1, const char* path2) {
-    //sanity test: is any of the arguments empty?
-    if (path1 == NULL || *path1 == 0) {
-        return path2 == NULL ? NULL : strdup(path2);
-    }
-    if (path2 == NULL || *path2 == 0) {
-        return strdup(path1);
-    }
-
-    //if path2 is absolute, path1 does not matter
-    if (*path2 == '/') {
-        return strdup(path2);
-    }
-
-    //join is `path1 + "/" + path2`
-    const size_t len1 = strlen(path1);
-    const size_t len2 = strlen(path2);
-    char* p = (char*) malloc(len1 + len2 + 2); //+2 for separator and '\0'
-
-    char* w = p; //write pointer
-    strncpy(w, path1, len1); w += len1;
-    if (w[-1] != '/') {
-        //insert separator only if required
-        *w++ = '/';
-    }
-    strncpy(w, path2, len2); w += len2;
-    *w = 0;
-    return p;
+    return strdup((Path(path1) + Path(path2)).str().c_str());
 }
 
 char* stringJoin(const char* s1, const char* s2) {

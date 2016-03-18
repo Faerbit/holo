@@ -34,18 +34,12 @@ static const size_t pluginCmdLen = 6; // == strlen(pluginCmd)
 //Step 1 of Config::Config(): Find root directory and setup fixed subdirectories.
 static bool prepareRootDir(Config& cfg) {
     //get the root directory
-    const char* rootDir = getenv("HOLO_ROOT_DIR");
-    cfg.rootDirectory = rootDir == NULL ? std::string() : rootDir;
-    if (cfg.rootDirectory.empty()) {
+    cfg.rootDirectory = getenv("HOLO_ROOT_DIR");
+    if (cfg.rootDirectory.str().empty()) {
         cfg.rootDirectory  = "/";
         cfg.cacheDirectory = "/tmp/holo-cache";
     } else {
-        char* rootDir  = pathClean(cfg.rootDirectory.c_str());
-        char* cacheDir = pathJoin(cfg.rootDirectory.c_str(), "tmp/holo-cache");
-        cfg.rootDirectory  = rootDir;
-        cfg.cacheDirectory = cacheDir;
-        free(rootDir);
-        free(cacheDir);
+        cfg.cacheDirectory = cfg.rootDirectory + "tmp/holo-cache";
     }
 
     //if the cache directory exists from a previous run, remove it recursively
@@ -83,20 +77,18 @@ static bool prepareRootDir(Config& cfg) {
 //Requires that step 1 (prepareRootDir) is already done.
 static bool readConfig(Config& cfg) {
     bool success = true; //unless set to false
-    size_t bufferLength; char* buffer; //declared in advance to avoid goto crossing initialization
 
     //open $root/etc/holorc
-    char* const rcPath = pathJoin(cfg.rootDirectory.c_str(), "etc/holorc");
-    FILE* file = fopen(rcPath, "r");
+    Path rcPath = cfg.rootDirectory + "etc/holorc";
+    FILE* file = fopen(rcPath.c_str(), "r");
     if (file == NULL) {
-        fprintf(stderr, "open %s: %s\n", rcPath, strerror(errno));
-        success = false;
-        goto ERR_FOPEN;
+        fprintf(stderr, "open %s: %s\n", rcPath.c_str(), strerror(errno));
+        return false;
     }
 
     //read line by line
-    bufferLength = 1000;
-    buffer       = (char*) malloc(bufferLength + 1);
+    size_t bufferLength = 1000;
+    char*  buffer       = (char*) malloc(bufferLength + 1);
     while (true) {
         const ssize_t readLength = getline(&buffer, &bufferLength, file);
         if (readLength < 0) {
@@ -132,15 +124,13 @@ static bool readConfig(Config& cfg) {
             //`line` now contains the plugin identifier
             cfg.plugins.push_back(new Plugin(line, cfg));
         } else {
-            fprintf(stderr, "read %s: unrecognized line: %s\n", rcPath, line);
+            fprintf(stderr, "read %s: unrecognized line: %s\n", rcPath.c_str(), line);
             success = false; //...but keep going to report all broken lines
         }
     } //read next line
 
     free(buffer);
     fclose(file);
-ERR_FOPEN:
-    free(rcPath);
 
     return success;
 }

@@ -27,46 +27,48 @@
 #include <check.h>
 #include <stdlib.h>
 
+void ck_assert_path_eq(const Path& p, const char* c) {
+    ck_assert_str_eq(p.str().c_str(), c);
+}
+
 START_TEST(test_pathClean) {
-    char* s = NULL;
 
     //shouldn't change clean paths
-    ck_assert_str_eq(s = pathClean("/"),        "/");        free(s);
-    ck_assert_str_eq(s = pathClean("/foo"),     "/foo");     free(s);
-    ck_assert_str_eq(s = pathClean("/foo/bar"), "/foo/bar"); free(s);
+    ck_assert_path_eq("/",        "/");
+    ck_assert_path_eq("/foo",     "/foo");
+    ck_assert_path_eq("/foo/bar", "/foo/bar");
 
     //should remove trailing slashes
-    ck_assert_str_eq(s = pathClean("/foo/"),     "/foo");     free(s);
-    ck_assert_str_eq(s = pathClean("/foo/bar/"), "/foo/bar"); free(s);
+    ck_assert_path_eq("/foo/",     "/foo");
+    ck_assert_path_eq("/foo/bar/", "/foo/bar");
 
     //should remove duplicate slashes
-    ck_assert_str_eq(s = pathClean("////"),        "/");        free(s);
-    ck_assert_str_eq(s = pathClean("//foo///bar"), "/foo/bar"); free(s);
+    ck_assert_path_eq("////",        "/");
+    ck_assert_path_eq("//foo///bar", "/foo/bar");
 
 } END_TEST
 
 START_TEST(test_pathJoin) {
-    char* s = NULL;
 
     //test appending of relative to absolute path
-    ck_assert_str_eq(s = pathJoin("/",        "foo"),     "/foo");             free(s);
-    ck_assert_str_eq(s = pathJoin("/qux/qux", "foo"),     "/qux/qux/foo");     free(s);
-    ck_assert_str_eq(s = pathJoin("/",        "foo/bar"), "/foo/bar");         free(s);
-    ck_assert_str_eq(s = pathJoin("/qux/qux", "foo/bar"), "/qux/qux/foo/bar"); free(s);
+    ck_assert_path_eq(Path("/")        + "foo",     "/foo");
+    ck_assert_path_eq(Path("/qux/qux") + "foo",     "/qux/qux/foo");
+    ck_assert_path_eq(Path("/")        + "foo/bar", "/foo/bar");
+    ck_assert_path_eq(Path("/qux/qux") + "foo/bar", "/qux/qux/foo/bar");
 
     //test appending of relative to relative path
-    ck_assert_str_eq(s = pathJoin(".",       "foo"),     "./foo");           free(s);
-    ck_assert_str_eq(s = pathJoin("qux",     "foo"),     "qux/foo");         free(s);
-    ck_assert_str_eq(s = pathJoin("qux/qux", "foo"),     "qux/qux/foo");     free(s);
-    ck_assert_str_eq(s = pathJoin(".",       "foo/bar"), "./foo/bar");       free(s);
-    ck_assert_str_eq(s = pathJoin("qux",     "foo/bar"), "qux/foo/bar");     free(s);
-    ck_assert_str_eq(s = pathJoin("qux/qux", "foo/bar"), "qux/qux/foo/bar"); free(s);
+    ck_assert_path_eq(Path(".")       + "foo",     "./foo");
+    ck_assert_path_eq(Path("qux")     + "foo",     "qux/foo");
+    ck_assert_path_eq(Path("qux/qux") + "foo",     "qux/qux/foo");
+    ck_assert_path_eq(Path(".")       + "foo/bar", "./foo/bar");
+    ck_assert_path_eq(Path("qux")     + "foo/bar", "qux/foo/bar");
+    ck_assert_path_eq(Path("qux/qux") + "foo/bar", "qux/qux/foo/bar");
 
     //test appending of absolute to absolute path (always returns the second path)
-    ck_assert_str_eq(s = pathJoin("/",        "/foo"),     "/foo");     free(s);
-    ck_assert_str_eq(s = pathJoin("/qux/qux", "/foo"),     "/foo");     free(s);
-    ck_assert_str_eq(s = pathJoin("/",        "/foo/bar"), "/foo/bar"); free(s);
-    ck_assert_str_eq(s = pathJoin("/qux/qux", "/foo/bar"), "/foo/bar"); free(s);
+    ck_assert_path_eq(Path("/")        + "/foo",     "/foo");
+    ck_assert_path_eq(Path("/qux/qux") + "/foo",     "/foo");
+    ck_assert_path_eq(Path("/")        + "/foo/bar", "/foo/bar");
+    ck_assert_path_eq(Path("/qux/qux") + "/foo/bar", "/foo/bar");
 
 } END_TEST
 

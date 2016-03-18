@@ -28,17 +28,17 @@
 
 bool lockFileAcquire(struct LockFile* lock, const Config& cfg) {
     //where to store the lock file?
-    if (cfg.rootDirectory == "/") {
-        lock->path = strdup("/run/holo.pid");
+    if (cfg.rootDirectory.str() == "/") {
+        lock->path = "/run/holo.pid";
     } else {
-        lock->path = pathJoin(cfg.rootDirectory.c_str(), "holo.pid");
+        lock->path = cfg.rootDirectory + "holo.pid";
     }
 
     //acquire lock
-    lock->fd = open(lock->path, O_WRONLY | O_CREAT | O_EXCL, 0644);
+    lock->fd = open(lock->path.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0644);
     if (lock->fd < 0) {
         const int open_errno = errno;
-        fprintf(stderr, "Cannot create lock file %s: %s\n", lock->path, strerror(open_errno));
+        fprintf(stderr, "Cannot create lock file %s: %s\n", lock->path.c_str(), strerror(open_errno));
         if (open_errno == EEXIST) {
             fputs(
                 "This usually means that another instance of Holo is currently running.\n"
@@ -59,14 +59,12 @@ void lockFileRelease(struct LockFile* lock) {
     if (lock->fd >= 0) {
         //release lock
         if (close(lock->fd) != 0) {
-            fprintf(stderr, "Cannot close lock file %s: %s\n", lock->path, strerror(errno));
+            fprintf(stderr, "Cannot close lock file %s: %s\n", lock->path.c_str(), strerror(errno));
         }
 
         //cleanup file
-        if (unlink(lock->path) != 0) {
-            fprintf(stderr, "Cannot remove lock file %s: %s\n", lock->path, strerror(errno));
+        if (unlink(lock->path.c_str()) != 0) {
+            fprintf(stderr, "Cannot remove lock file %s: %s\n", lock->path.c_str(), strerror(errno));
         }
     }
-
-    free(lock->path);
 }
