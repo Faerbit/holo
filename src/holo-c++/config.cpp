@@ -40,8 +40,12 @@ static bool prepareRootDir(Config& cfg) {
         cfg.rootDirectory  = "/";
         cfg.cacheDirectory = "/tmp/holo-cache";
     } else {
-        cfg.rootDirectory  = pathClean(cfg.rootDirectory.c_str());
-        cfg.cacheDirectory = pathJoin(cfg.rootDirectory.c_str(), "tmp/holo-cache");
+        char* rootDir  = pathClean(cfg.rootDirectory.c_str());
+        char* cacheDir = pathJoin(cfg.rootDirectory.c_str(), "tmp/holo-cache");
+        cfg.rootDirectory  = rootDir;
+        cfg.cacheDirectory = cacheDir;
+        free(rootDir);
+        free(cacheDir);
     }
 
     //if the cache directory exists from a previous run, remove it recursively
@@ -154,5 +158,8 @@ Config::~Config() {
         //...but keep going
     }
 
+    for (Plugin* plugin: plugins) {
+        delete plugin;
+    }
     plugins.clear();
 }

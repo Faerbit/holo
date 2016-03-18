@@ -32,7 +32,9 @@ Plugin::Plugin(const std::string& identifierLine, const Config& config) {
 
         //infer the executable path from the identifier
         const std::string relExecutablePath = "usr/lib/holo/holo-" + identifierLine;
-        m_executablePath = pathJoin(config.rootDirectory.c_str(), relExecutablePath.c_str());
+        char* executablePath = pathJoin(config.rootDirectory.c_str(), relExecutablePath.c_str());
+        m_executablePath = executablePath;
+        free(executablePath);
     } else {
         //`identifierLine` contains both identifier and executable path
         m_identifier     = identifierLine.substr(0, eqIdx);
