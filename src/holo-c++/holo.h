@@ -131,6 +131,6 @@ int mkdirIncludingParents(const Path& path, mode_t mode);
 ///Remove the directory at `path` and all its contents. On success, return
 ///NULL. On failure, return an error message (which must be free'd by the
 ///caller).
-char* unlinkTree(const Path& path);
+std::string unlinkTree(const Path& path);
 
 #endif // HOLO_H

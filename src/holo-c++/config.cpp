@@ -43,19 +43,17 @@ static bool prepareRootDir(Config& cfg) {
     }
 
     //if the cache directory exists from a previous run, remove it recursively
-    char* error;
     if (unlink(cfg.cacheDirectory.c_str()) != 0) {
         switch (errno) {
-        case EISDIR:
+        case EISDIR: {
             //is a directory -> remove recursively
-            error = unlinkTree(cfg.cacheDirectory);
-            if (error != NULL) {
-                fprintf(stderr, "Cannot remove %s: %s\n", cfg.cacheDirectory.c_str(), error);
-                free(error);
+            const std::string error = unlinkTree(cfg.cacheDirectory);
+            if (!error.empty()) {
+                fprintf(stderr, "Cannot remove %s: %s\n", cfg.cacheDirectory.c_str(), error.c_str());
                 return false;
             }
             break;
-        case ENOENT:
+        } case ENOENT:
             //does not exist -> nothing to do
             break;
         default:
@@ -141,10 +139,9 @@ Config::Config() {
 
 Config::~Config() {
     //cleanup runtime cache
-    char* error = unlinkTree(cacheDirectory);
-    if (error != NULL) {
-        fprintf(stderr, "Cannot remove %s: %s\n", cacheDirectory.c_str(), error);
-        free(error);
+    const std::string error = unlinkTree(cacheDirectory);
+    if (!error.empty()) {
+        fprintf(stderr, "Cannot remove %s: %s\n", cacheDirectory.c_str(), error.c_str());
         //...but keep going
     }
 

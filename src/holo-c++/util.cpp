@@ -30,6 +30,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <sstream>
 
 int mkdirIncludingParents(const Path& path, mode_t mode) {
     //mkdir() will return ENOENT if a parent is missing; return success and
@@ -59,15 +60,12 @@ int mkdirIncludingParents(const Path& path, mode_t mode) {
     return mkdir(path.c_str(), mode);
 }
 
-static char* errnoToString(const char* action, const Path& path, int _errno) {
-    const char* error = strerror(_errno);
-    const size_t resultSize = strlen(action) + path.str().size() + strlen(error) + 4;
-    char* result = (char*) malloc(resultSize);
-    sprintf(result, "%s %s: %s", action, path.c_str(), error);
-    return result;
+static std::string errnoToString(const char* action, const Path& path, int _errno) {
+    std::ostringstream s; s << action << ' ' << path.str() << ": " << strerror(_errno);
+    return s.str();
 }
 
-char* unlinkTree(const Path& path) {
+std::string unlinkTree(const Path& path) {
     //open directory for listing
     DIR* dir = opendir(path.c_str());
     if (dir == NULL) {
@@ -101,8 +99,8 @@ char* unlinkTree(const Path& path) {
 
         if (S_ISDIR(s.st_mode)) {
             //if it's a directory, recurse down
-            char* error = unlinkTree(path + entryName);
-            if (error != NULL) {
+            const std::string error = unlinkTree(path + entryName);
+            if (!error.empty()) {
                 return error;
             }
         } else {
