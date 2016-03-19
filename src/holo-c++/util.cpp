@@ -31,70 +31,45 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-char* pathClean(const char* path) {
-    return strdup(Path(path).str().c_str());
-}
-
-char* pathJoin(const char* path1, const char* path2) {
-    return strdup((Path(path1) + Path(path2)).str().c_str());
-}
-
-char* stringJoin(const char* s1, const char* s2) {
-    const size_t len1 = s1 == NULL ? 0 : strlen(s1);
-    const size_t len2 = s2 == NULL ? 0 : strlen(s2);
-    char* s = (char*) malloc(len1 + len2 + 1); //+1 for separator and '\0'
-
-    char* w = s; //write pointer
-    strncpy(w, s1, len1); w += len1;
-    strncpy(w, s2, len2); w += len2;
-    *w = 0;
-    return s;
-}
-
-int mkdirIncludingParents(const char* path, mode_t mode) {
+int mkdirIncludingParents(const Path& path, mode_t mode) {
     //mkdir() will return ENOENT if a parent is missing; return success and
     //all other errors immediately
-    const int result = mkdir(path, mode);
+    const int result = mkdir(path.c_str(), mode);
     if (result == 0 || errno != ENOENT) {
         return result;
     }
 
     //is there a parent directory to recurse to?
     //counter-examples: path == "/" or path == "foo"
-    char* p = pathClean(path);
-    char* slashPos = strrchr(p, (int) '/');
-    if (slashPos <= p + 1) {
+    const auto slashIdx = path.str().rfind('/');
+    if (slashIdx == std::string::npos || slashIdx == 0) {
         //no, there's not -> propagate the original error
-        free(p);
         errno = ENOENT;
         return -1;
     }
 
     //truncate last path element to obtain parent path
-    *slashPos = 0;
+    const Path parentPath = Path(path.str().substr(0, slashIdx));
     //recurse to parent
-    if (mkdirIncludingParents(p, mode) != 0) {
-        const int result_errno = errno;
-        free(p);
-        errno = result_errno;
+    if (mkdirIncludingParents(parentPath, mode) != 0) {
         return -1;
     }
 
     //then retry mkdir()
-    return mkdir(path, mode);
+    return mkdir(path.c_str(), mode);
 }
 
-static char* errnoToString(const char* action, const char* path, int _errno) {
+static char* errnoToString(const char* action, const Path& path, int _errno) {
     const char* error = strerror(_errno);
-    const int length  = sprintf(NULL, "%s %s: %s", action, path, error);
-    char* result = (char*) malloc((size_t) length + 1);
-    sprintf(result, "%s %s: %s", action, path, error);
+    const size_t resultSize = strlen(action) + path.str().size() + strlen(error) + 4;
+    char* result = (char*) malloc(resultSize);
+    sprintf(result, "%s %s: %s", action, path.c_str(), error);
     return result;
 }
 
-char* unlinkTree(const char* path) {
+char* unlinkTree(const Path& path) {
     //open directory for listing
-    DIR* dir = opendir(path);
+    DIR* dir = opendir(path.c_str());
     if (dir == NULL) {
         return errnoToString("open", path, errno);
     }
@@ -121,27 +96,19 @@ char* unlinkTree(const char* path) {
 
         //stat the entry
         if (fstatat(dir_fd, entryName, &s, AT_SYMLINK_NOFOLLOW) != 0) {
-            char* entryPath = pathJoin(path, entryName);
-            char* result = errnoToString("open", entryPath, errno);
-            free(entryPath);
-            return result;
+            return errnoToString("open", path + entryName, errno);
         }
 
         if (S_ISDIR(s.st_mode)) {
             //if it's a directory, recurse down
-            char* entryPath = pathJoin(path, entryName);
-            char* error = unlinkTree(entryPath);
-            free(entryPath);
+            char* error = unlinkTree(path + entryName);
             if (error != NULL) {
                 return error;
             }
         } else {
             //remove all other types of files with unlink()
             if (unlinkat(dir_fd, entryName, 0) != 0) {
-                char* entryPath = pathJoin(path, entryName);
-                char* result = errnoToString("remove", entryPath, errno);
-                free(entryPath);
-                return result;
+                return errnoToString("remove", path + entryName, errno);
             }
         }
     }
@@ -151,7 +118,7 @@ char* unlinkTree(const char* path) {
     if (closedir(dir) != 0) {
         return errnoToString("close", path, errno);
     }
-    if (rmdir(path) != 0) {
+    if (rmdir(path.c_str()) != 0) {
         return errnoToString("remove", path, errno);
     }
 

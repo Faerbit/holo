@@ -123,20 +123,12 @@ class Plugin {
 ////////////////////////////////////////////////////////////////////////////////
 // util.c
 
-///\deprecated
-char* pathClean(const char* path);
-///\deprecated
-char* pathJoin(const char* path1, const char* path2);
-
-///Join two strings. NULL strings are interpreted as empty strings.
-char* stringJoin(const char* s1, const char* s2);
-
 ///Like mkdir(3), but create parent directories recursively like `mkdir -p`.
-int mkdirIncludingParents(const char* path, mode_t mode);
+int mkdirIncludingParents(const Path& path, mode_t mode);
 
 ///Remove the directory at `path` and all its contents. On success, return
 ///NULL. On failure, return an error message (which must be free'd by the
 ///caller).
-char* unlinkTree(const char* path);
+char* unlinkTree(const Path& path);
 
 #endif // HOLO_H

@@ -72,28 +72,10 @@ START_TEST(test_pathJoin) {
 
 } END_TEST
 
-START_TEST(test_stringJoin) {
-    char* s = NULL;
-
-    ck_assert_str_eq(s = stringJoin(NULL,  NULL), "");        free(s);
-    ck_assert_str_eq(s = stringJoin("",    NULL), "");        free(s);
-    ck_assert_str_eq(s = stringJoin("abc", NULL), "abc");     free(s);
-
-    ck_assert_str_eq(s = stringJoin(NULL,  ""),   "");        free(s);
-    ck_assert_str_eq(s = stringJoin("",    ""),   "");        free(s);
-    ck_assert_str_eq(s = stringJoin("abc", ""),   "abc");     free(s);
-
-    ck_assert_str_eq(s = stringJoin(NULL,  "def"), "def");    free(s);
-    ck_assert_str_eq(s = stringJoin("",    "def"), "def");    free(s);
-    ck_assert_str_eq(s = stringJoin("abc", "def"), "abcdef"); free(s);
-
-} END_TEST
-
 Suite* makeTestSuite() {
     TCase* tcPaths = tcase_create("path functions");
     tcase_add_test(tcPaths, test_pathClean);
     tcase_add_test(tcPaths, test_pathJoin);
-    tcase_add_test(tcPaths, test_stringJoin);
 
     Suite* s = suite_create("holo");
     suite_add_tcase(s, tcPaths);

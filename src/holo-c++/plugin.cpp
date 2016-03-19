@@ -27,14 +27,10 @@ Plugin::Plugin(const std::string& identifierLine, const Config& config) {
     //e.g. identifierLine = "files=./build/holo-files"
     const auto eqIdx = identifierLine.find('=');
     if (eqIdx == std::string::npos) {
-        //`identifierLine` contains only the identifier
-        m_identifier = identifierLine;
-
-        //infer the executable path from the identifier
-        const std::string relExecutablePath = "usr/lib/holo/holo-" + identifierLine;
-        char* executablePath = pathJoin(config.rootDirectory.c_str(), relExecutablePath.c_str());
-        m_executablePath = executablePath;
-        free(executablePath);
+        //`identifierLine` contains only the identifier - infer the executable
+        //path from the identifier
+        m_identifier     = identifierLine;
+        m_executablePath = config.rootDirectory + ("usr/lib/holo/holo-" + identifierLine);
     } else {
         //`identifierLine` contains both identifier and executable path
         m_identifier     = identifierLine.substr(0, eqIdx);

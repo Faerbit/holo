@@ -48,7 +48,7 @@ static bool prepareRootDir(Config& cfg) {
         switch (errno) {
         case EISDIR:
             //is a directory -> remove recursively
-            error = unlinkTree(cfg.cacheDirectory.c_str());
+            error = unlinkTree(cfg.cacheDirectory);
             if (error != NULL) {
                 fprintf(stderr, "Cannot remove %s: %s\n", cfg.cacheDirectory.c_str(), error);
                 free(error);
@@ -66,7 +66,7 @@ static bool prepareRootDir(Config& cfg) {
     }
 
     //initialize the cache directory
-    if (mkdirIncludingParents(cfg.cacheDirectory.c_str(), 0755) != 0) {
+    if (mkdirIncludingParents(cfg.cacheDirectory, 0755) != 0) {
         fprintf(stderr, "Cannot create %s: %s\n", cfg.cacheDirectory.c_str(), strerror(errno));
         return false;
     }
@@ -141,7 +141,7 @@ Config::Config() {
 
 Config::~Config() {
     //cleanup runtime cache
-    char* error = unlinkTree(cacheDirectory.c_str());
+    char* error = unlinkTree(cacheDirectory);
     if (error != NULL) {
         fprintf(stderr, "Cannot remove %s: %s\n", cacheDirectory.c_str(), error);
         free(error);
