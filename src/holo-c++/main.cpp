@@ -24,17 +24,14 @@
 #include <stdio.h>  //(f)printf
 
 int main() {
-    int exitStatus = 0;
-
     Config cfg;
     if (!cfg.isValid) {
         return EX_CONFIG;
     }
 
-    struct LockFile lock;
-    if (!lockFileAcquire(&lock, cfg)) {
-        exitStatus = EX_UNAVAILABLE;
-        goto ERR_LOCK_ACQUIRE;
+    LockFile lock(cfg);
+    if (!lock.isAcquired()) {
+        return EX_UNAVAILABLE;
     }
 
     //iterate over plugins
@@ -43,8 +40,5 @@ int main() {
         printf("DEBUG: found plugin %s at %s\n", plugin->identifier().c_str(), plugin->executablePath().c_str());
     }
 
-ERR_LOCK_ACQUIRE:
-    lockFileRelease(&lock);
-
-    return exitStatus;
+    return 0;
 }

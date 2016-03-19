@@ -92,17 +92,19 @@ struct Config {
 // lockfile.c
 
 ///LockFile represents the /run/holo.pid file.
-struct LockFile {
-    Path path;
-    int  fd;
+class LockFile {
+    public:
+        ///Construct a new instance and try to acquire the lock.
+        LockFile(const Config& cfg);
+        ///Release the lock (if it was held).
+        ~LockFile();
+
+        ///Return if the constructor succeeded in acquiring the lock.
+        bool isAcquired() const { return m_fd >= 0; }
+    private:
+        Path m_path;
+        int  m_fd;
 };
-
-///Initialize an allocated LockFile instance by creating the lock file. Returns
-///whether the lock was obtained successfully.
-bool lockFileAcquire(struct LockFile* lock, const Config& cfg);
-
-///Release the lockfile.
-void lockFileRelease(struct LockFile* lock);
 
 ////////////////////////////////////////////////////////////////////////////////
 // plugin.c

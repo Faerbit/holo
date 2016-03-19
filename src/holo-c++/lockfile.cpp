@@ -26,45 +26,38 @@
 #include <string.h>
 #include <unistd.h>
 
-bool lockFileAcquire(struct LockFile* lock, const Config& cfg) {
-    //where to store the lock file?
-    if (cfg.rootDirectory.str() == "/") {
-        lock->path = "/run/holo.pid";
-    } else {
-        lock->path = cfg.rootDirectory + "holo.pid";
-    }
-
+LockFile::LockFile(const Config& cfg)
+    : m_path(cfg.rootDirectory.str() == "/" ? "/run/holo.pid" : (cfg.rootDirectory + "holo.pid"))
+    , m_fd(-1)
+{
     //acquire lock
-    lock->fd = open(lock->path.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0644);
-    if (lock->fd < 0) {
+    m_fd = open(m_path.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0644);
+    if (m_fd < 0) {
         const int open_errno = errno;
-        fprintf(stderr, "Cannot create lock file %s: %s\n", lock->path.c_str(), strerror(open_errno));
+        fprintf(stderr, "Cannot create lock file %s: %s\n", m_path.c_str(), strerror(open_errno));
         if (open_errno == EEXIST) {
             fputs(
                 "This usually means that another instance of Holo is currently running.\n"
                 "If not, you can try to delete the lock file manually.\n",
             stderr);
         }
-        return false;
     }
     //record PID in lockfile (NOTE: we don't care if this fails, it's only informative anyway)
-    dprintf(lock->fd, "%d\n", getpid());
-    fsync(lock->fd);
-
-    return true;
+    dprintf(m_fd, "%d\n", getpid());
+    fsync(m_fd);
 }
 
-void lockFileRelease(struct LockFile* lock) {
+LockFile::~LockFile() {
     //did we acquire the lock?
-    if (lock->fd >= 0) {
+    if (isAcquired()) {
         //release lock
-        if (close(lock->fd) != 0) {
-            fprintf(stderr, "Cannot close lock file %s: %s\n", lock->path.c_str(), strerror(errno));
+        if (close(m_fd) != 0) {
+            fprintf(stderr, "Cannot close lock file %s: %s\n", m_path.c_str(), strerror(errno));
         }
 
         //cleanup file
-        if (unlink(lock->path.c_str()) != 0) {
-            fprintf(stderr, "Cannot remove lock file %s: %s\n", lock->path.c_str(), strerror(errno));
+        if (unlink(m_path.c_str()) != 0) {
+            fprintf(stderr, "Cannot remove lock file %s: %s\n", m_path.c_str(), strerror(errno));
         }
     }
 }
